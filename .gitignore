@@ -20,3 +20,11 @@
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
+.idea/libraries/com_ea_async_ea_async_1_2_2.xml
+.idea/libraries/com_ibm_async_asyncutil_flow_0_1_0.xml
+.idea/misc.xml
+.idea/vcs.xml
+.idea/modules.xml
+.idea/workspace.xml
+JPalns.iml
+out/production/JPalns/META-INF/MANIFEST.MF
