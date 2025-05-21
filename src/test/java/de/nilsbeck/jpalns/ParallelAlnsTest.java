@@ -1,7 +1,7 @@
 package de.nilsbeck.jpalns;
 
-import de.nilsbeck.jpalns.knapsack_example.KnapsackProblem;
-import de.nilsbeck.jpalns.knapsack_example.KnapsackSolution;
+import de.nilsbeck.knapsack_example.KnapsackProblem;
+import de.nilsbeck.knapsack_example.KnapsackSolution;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
