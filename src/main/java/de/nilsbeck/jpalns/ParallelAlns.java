@@ -157,8 +157,12 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
         Runnable runnable = () -> {
             final double[] temperature = {_temperature};
             do {
-                final CompletableFuture<Function<TSolution, CompletableFuture<TSolution>>>[] dFuture = new CompletableFuture[1];
-                final CompletableFuture<Function<TSolution, CompletableFuture<TSolution>>>[] rFuture = new CompletableFuture[1];
+                @SuppressWarnings("unchecked")
+                final CompletableFuture<Function<TSolution, CompletableFuture<TSolution>>>[] dFuture = 
+                    (CompletableFuture<Function<TSolution, CompletableFuture<TSolution>>>[]) new CompletableFuture<?>[1];
+                @SuppressWarnings("unchecked")
+                final CompletableFuture<Function<TSolution, CompletableFuture<TSolution>>>[] rFuture = 
+                    (CompletableFuture<Function<TSolution, CompletableFuture<TSolution>>>[]) new CompletableFuture<?>[1];
                 final int[] operatorIndex = new int[1];
                 
                 // Select operator
@@ -240,7 +244,7 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
         return BestSolution;
     }
 
-    private WeightSelection UpdateBestSolution(TSolution xTemp, WeightSelection weightSelection)
+    WeightSelection UpdateBestSolution(TSolution xTemp, WeightSelection weightSelection)
     {
         if (_optimizationType.isBetter(xTemp.getObjective(), BestSolution.getObjective(), _precision))
         {
@@ -250,12 +254,34 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
         return weightSelection;
     }
 
-    private WeightSelection UpdateCurrentSolution(TSolution xTemp, double temperature) {
+    WeightSelection UpdateCurrentSolution(TSolution xTemp, double temperature) {
         WeightSelection weightSelection = Accept(xTemp, temperature);
         if (weightSelection.ordinal() >= WeightSelection.Accepted.ordinal()) {
             _x = xTemp;
         }
         return weightSelection;
+    }
+
+    int SelectOperatorIndex(List<Double> cumulativeWeights)
+    {
+        double randomValue;
+        randomValue = _randomizer.nextDouble();
+
+        for (int i = 0; i < cumulativeWeights.size(); i++) {
+            if (cumulativeWeights.get(i) > randomValue)
+                return i;
+        }
+        return cumulativeWeights.size() - 1;
+    }
+
+    private WeightSelection Accept(TSolution newSolution, double temperature)
+    {
+        if (_optimizationType.isBetter(newSolution.getObjective(), _x.getObjective(), _precision)) {
+            return WeightSelection.BetterThanCurrent;
+        }
+        double probability = _optimizationType.getAcceptanceProbability(newSolution.getObjective(), _x.getObjective(), temperature);
+        double randomValue = _randomizer.nextDouble();
+        return randomValue <= probability ? WeightSelection.Accepted : WeightSelection.Rejected;
     }
 
     private void UpdateWeights(int operatorIndex, WeightSelection weightSelection)
@@ -280,27 +306,5 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
         }
         _weights.set(operatorIndex,_decay * _weights.get(operatorIndex) + (1 - _decay) * weight);
         _cumulativeWeights = Helper.toCumulativeEnumerable(_weights);
-    }
-
-    private int SelectOperatorIndex(List<Double> cumulativeWeights)
-    {
-        double randomValue;
-        randomValue = _randomizer.nextDouble();
-
-        for (int i = 0; i < cumulativeWeights.size(); i++) {
-            if (cumulativeWeights.get(i) > randomValue)
-                return i;
-        }
-        return cumulativeWeights.size() - 1;
-    }
-
-    private WeightSelection Accept(TSolution newSolution, double temperature)
-    {
-        if (_optimizationType.isBetter(newSolution.getObjective(), _x.getObjective(), _precision)) {
-            return WeightSelection.BetterThanCurrent;
-        }
-        double probability = _optimizationType.getAcceptanceProbability(newSolution.getObjective(), _x.getObjective(), temperature);
-        boolean accepted = _randomizer.nextDouble() <= probability;
-        return accepted ? WeightSelection.Accepted : WeightSelection.Rejected;
     }
 }

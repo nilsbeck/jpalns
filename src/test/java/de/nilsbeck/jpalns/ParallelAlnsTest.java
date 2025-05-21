@@ -12,6 +12,7 @@ import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import static org.junit.jupiter.api.Assertions.*;
+import java.util.Arrays;
 
 class ParallelAlnsTest {
     private ParallelAlns<KnapsackProblem, KnapsackSolution> alns;
@@ -63,7 +64,9 @@ class ParallelAlnsTest {
         try {
             java.lang.reflect.Field weightsField = ParallelAlns.class.getDeclaredField("_weights");
             weightsField.setAccessible(true);
-            initialWeights = (List<Double>) weightsField.get(alns);
+            @SuppressWarnings("unchecked")
+            List<Double> weights = (List<Double>) weightsField.get(alns);
+            initialWeights = new ArrayList<>(weights);
         } catch (Exception e) {
             fail("Failed to access weights field: " + e.getMessage());
         }
@@ -89,7 +92,9 @@ class ParallelAlnsTest {
         try {
             java.lang.reflect.Field weightsField = ParallelAlns.class.getDeclaredField("_weights");
             weightsField.setAccessible(true);
-            updatedWeights = (List<Double>) weightsField.get(alns);
+            @SuppressWarnings("unchecked")
+            List<Double> weights = (List<Double>) weightsField.get(alns);
+            updatedWeights = new ArrayList<>(weights);
         } catch (Exception e) {
             fail("Failed to access weights field: " + e.getMessage());
         }
@@ -132,7 +137,9 @@ class ParallelAlnsTest {
         try {
             java.lang.reflect.Field cumulativeWeightsField = ParallelAlns.class.getDeclaredField("_cumulativeWeights");
             cumulativeWeightsField.setAccessible(true);
-            initialCumulativeWeights = (List<Double>) cumulativeWeightsField.get(alns);
+            @SuppressWarnings("unchecked")
+            List<Double> cumulativeWeights = (List<Double>) cumulativeWeightsField.get(alns);
+            initialCumulativeWeights = new ArrayList<>(cumulativeWeights);
         } catch (Exception e) {
             fail("Failed to access cumulative weights field: " + e.getMessage());
         }
@@ -151,7 +158,9 @@ class ParallelAlnsTest {
         try {
             java.lang.reflect.Field cumulativeWeightsField = ParallelAlns.class.getDeclaredField("_cumulativeWeights");
             cumulativeWeightsField.setAccessible(true);
-            updatedCumulativeWeights = (List<Double>) cumulativeWeightsField.get(alns);
+            @SuppressWarnings("unchecked")
+            List<Double> cumulativeWeights = (List<Double>) cumulativeWeightsField.get(alns);
+            updatedCumulativeWeights = new ArrayList<>(cumulativeWeights);
         } catch (Exception e) {
             fail("Failed to access cumulative weights field: " + e.getMessage());
         }
@@ -205,7 +214,9 @@ class ParallelAlnsTest {
             try {
                 java.lang.reflect.Field weightsField = ParallelAlns.class.getDeclaredField("_weights");
                 weightsField.setAccessible(true);
-                weightsAfterSecondUpdate = (List<Double>) weightsField.get(alns);
+                @SuppressWarnings("unchecked")
+                List<Double> weights = (List<Double>) weightsField.get(alns);
+                weightsAfterSecondUpdate = new ArrayList<>(weights);
             } catch (Exception e) {
                 fail("Failed to access weights field: " + e.getMessage());
                 return;
@@ -240,7 +251,9 @@ class ParallelAlnsTest {
                 try {
                     java.lang.reflect.Field weightsField = ParallelAlns.class.getDeclaredField("_weights");
                     weightsField.setAccessible(true);
-                    currentWeights = (List<Double>) weightsField.get(alns);
+                    @SuppressWarnings("unchecked")
+                    List<Double> weights = (List<Double>) weightsField.get(alns);
+                    currentWeights = new ArrayList<>(weights);
                 } catch (Exception e) {
                     fail("Failed to access weights field: " + e.getMessage());
                     return;
@@ -256,6 +269,174 @@ class ParallelAlnsTest {
             }
         } catch (Exception e) {
             fail("Failed to test weight bounds: " + e.getMessage());
+        }
+    }
+
+    @Test
+    void testUpdateCurrentSolution() {
+        // Create test problem with items
+        List<KnapsackProblem.Item> items = Arrays.asList(
+            new KnapsackProblem.Item("item1", 10, 100),  // weight 10, value 100
+            new KnapsackProblem.Item("item2", 20, 200)   // weight 20, value 200
+        );
+        KnapsackProblem problem = new KnapsackProblem(items, 100); // capacity 100
+
+        // Create test solutions
+        KnapsackSolution currentSolution = new KnapsackSolution(problem);
+        KnapsackSolution betterSolution = new KnapsackSolution(problem);
+        KnapsackSolution worseSolution = new KnapsackSolution(problem);
+
+        // Add items to create different objective values
+        currentSolution.addItem(0); // Add first item (value 100)
+        betterSolution.addItem(0);
+        betterSolution.addItem(1); // Add both items (value 300)
+        worseSolution.addItem(0);
+        worseSolution.removeItem(0); // Empty solution (value 0)
+
+        // Test better solution (should be accepted immediately)
+        try {
+            java.lang.reflect.Field xField = ParallelAlns.class.getDeclaredField("_x");
+            xField.setAccessible(true);
+            xField.set(alns, currentSolution);  // Reset _x before test
+        } catch (Exception e) {
+            fail("Failed to reset _x field: " + e.getMessage());
+        }
+        WeightSelection result = alns.UpdateCurrentSolution(betterSolution, 1000.0);
+        assertEquals(WeightSelection.BetterThanCurrent, result, "Better solution should be accepted with BetterThanCurrent status");
+
+        // Test worse solution with high temperature (should have high acceptance probability)
+        try {
+            java.lang.reflect.Field xField = ParallelAlns.class.getDeclaredField("_x");
+            xField.setAccessible(true);
+            xField.set(alns, currentSolution);  // Reset _x before test
+        } catch (Exception e) {
+            fail("Failed to reset _x field: " + e.getMessage());
+        }
+        result = alns.UpdateCurrentSolution(worseSolution, 1000.0);
+        assertTrue(result == WeightSelection.Accepted || result == WeightSelection.Rejected,
+            "Worse solution should be either Accepted or Rejected based on probability");
+
+        // Test worse solution with low temperature (should have low acceptance probability)
+        try {
+            java.lang.reflect.Field xField = ParallelAlns.class.getDeclaredField("_x");
+            xField.setAccessible(true);
+            xField.set(alns, currentSolution);  // Reset _x before test
+        } catch (Exception e) {
+            fail("Failed to reset _x field: " + e.getMessage());
+        }
+        // Set randomizer to always return a value that's guaranteed to be greater than the acceptance probability
+        try {
+            java.lang.reflect.Field randomizerField = ParallelAlns.class.getDeclaredField("_randomizer");
+            randomizerField.setAccessible(true);
+            randomizerField.set(alns, new Random() {
+                @Override
+                public double nextDouble() {
+                    return 0.5; // Use a value that's definitely greater than exp(-1000) but less than 1.0
+                }
+            });
+        } catch (Exception e) {
+            fail("Failed to set _randomizer field: " + e.getMessage());
+        }
+        // Test worse solution with low temperature
+        double temp = 0.1;
+        result = alns.UpdateCurrentSolution(worseSolution, temp);
+        assertEquals(WeightSelection.Rejected, result, "Worse solution should be rejected with low temperature");
+    }
+
+    @Test
+    void testUpdateBestSolution() {
+        // Create test problem with items
+        List<KnapsackProblem.Item> items = Arrays.asList(
+            new KnapsackProblem.Item("item1", 10, 100),  // weight 10, value 100
+            new KnapsackProblem.Item("item2", 20, 200)   // weight 20, value 200
+        );
+        KnapsackProblem problem = new KnapsackProblem(items, 100); // capacity 100
+
+        // Create test solutions
+        KnapsackSolution initialBest = new KnapsackSolution(problem);
+        KnapsackSolution betterSolution = new KnapsackSolution(problem);
+        KnapsackSolution worseSolution = new KnapsackSolution(problem);
+
+        // Set up initial best solution
+        initialBest.addItem(0); // Add first item (value 100)
+        betterSolution.addItem(0);
+        betterSolution.addItem(1); // Add both items (value 300)
+        worseSolution.addItem(0);
+        worseSolution.removeItem(0); // Empty solution (value 0)
+
+        // Set initial best solution and current solution through reflection
+        try {
+            java.lang.reflect.Field bestSolutionField = ParallelAlns.class.getDeclaredField("BestSolution");
+            bestSolutionField.setAccessible(true);
+            bestSolutionField.set(alns, initialBest);
+            java.lang.reflect.Field xField = ParallelAlns.class.getDeclaredField("_x");
+            xField.setAccessible(true);
+            xField.set(alns, initialBest);
+        } catch (Exception e) {
+            fail("Failed to set BestSolution or _x field: " + e.getMessage());
+        }
+
+        // Test with better solution
+        WeightSelection result = alns.UpdateBestSolution(betterSolution, WeightSelection.Accepted);
+        assertEquals(WeightSelection.NewGlobalBest, result, "Better solution should update best solution and return NewGlobalBest");
+        try {
+            java.lang.reflect.Field bestSolutionField = ParallelAlns.class.getDeclaredField("BestSolution");
+            bestSolutionField.setAccessible(true);
+            KnapsackSolution newBest = (KnapsackSolution) bestSolutionField.get(alns);
+            assertEquals(betterSolution.getObjective(), newBest.getObjective(), PRECISION, "Best solution should be updated to better solution");
+        } catch (Exception e) {
+            fail("Failed to get BestSolution field: " + e.getMessage());
+        }
+
+        // Test with worse solution
+        result = alns.UpdateBestSolution(worseSolution, WeightSelection.Accepted);
+        assertEquals(WeightSelection.Accepted, result, "Worse solution should not update best solution");
+        try {
+            java.lang.reflect.Field bestSolutionField = ParallelAlns.class.getDeclaredField("BestSolution");
+            bestSolutionField.setAccessible(true);
+            KnapsackSolution newBest = (KnapsackSolution) bestSolutionField.get(alns);
+            assertEquals(betterSolution.getObjective(), newBest.getObjective(), PRECISION, "Best solution should remain unchanged");
+        } catch (Exception e) {
+            fail("Failed to get BestSolution field: " + e.getMessage());
+        }
+    }
+
+    @Test
+    void testSelectOperatorIndex() {
+        // Create test cumulative weights
+        List<Double> cumulativeWeights = new ArrayList<>();
+        cumulativeWeights.add(0.3);  // 0-0.3
+        cumulativeWeights.add(0.6);  // 0.3-0.6
+        cumulativeWeights.add(0.8);  // 0.6-0.8
+        cumulativeWeights.add(1.0);  // 0.8-1.0
+
+        // Set random seed for deterministic testing
+        try {
+            java.lang.reflect.Field randomizerField = ParallelAlns.class.getDeclaredField("_randomizer");
+            randomizerField.setAccessible(true);
+            randomizerField.set(alns, new Random(42));
+        } catch (Exception e) {
+            fail("Failed to set _randomizer field: " + e.getMessage());
+        }
+
+        // Test multiple selections
+        int[] selections = new int[1000];
+        for (int i = 0; i < 1000; i++) {
+            int index = alns.SelectOperatorIndex(cumulativeWeights);
+            assertTrue(index >= 0 && index < cumulativeWeights.size(), 
+                "Selected index should be within bounds");
+            selections[index]++;
+        }
+
+        // Verify distribution (roughly)
+        // Note: This is a probabilistic test, so we use wide bounds
+        for (int i = 0; i < cumulativeWeights.size(); i++) {
+            double probability = (i == 0 ? cumulativeWeights.get(i) : 
+                cumulativeWeights.get(i) - cumulativeWeights.get(i-1));
+            double expected = 1000 * probability;
+            double tolerance = expected * 0.2; // 20% tolerance
+            assertTrue(Math.abs(selections[i] - expected) <= tolerance,
+                "Selection distribution should roughly match cumulative weights");
         }
     }
 } 
