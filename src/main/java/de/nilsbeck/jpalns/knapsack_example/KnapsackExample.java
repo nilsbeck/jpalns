@@ -3,6 +3,10 @@ package de.nilsbeck.jpalns.knapsack_example;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Main class for the knapsack problem example.
+ * Defines a static knapsack problem (items and capacity) and solves it using the ALNS solver.
+ */
 public class KnapsackExample {
     public static void main(String[] args) {
         // Create a sample knapsack problem

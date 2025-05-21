@@ -2,6 +2,9 @@ package de.nilsbeck.jpalns.knapsack_example;
 
 import java.util.List;
 
+/**
+ * Represents a knapsack problem with a list of items and a capacity.
+ */
 public class KnapsackProblem {
     private final List<Item> items;
     private final int capacity;

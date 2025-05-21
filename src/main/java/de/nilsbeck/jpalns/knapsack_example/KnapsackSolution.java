@@ -3,6 +3,11 @@ package de.nilsbeck.jpalns.knapsack_example;
 import de.nilsbeck.jpalns.ISolution;
 import java.util.BitSet;
 
+/**
+ * Represents a solution to the knapsack problem.
+ * Implements the ISolution interface.
+ * Implements the Cloneable interface.
+ */
 public class KnapsackSolution implements ISolution<KnapsackSolution> {
     private final BitSet selectedItems;
     private final KnapsackProblem problem;

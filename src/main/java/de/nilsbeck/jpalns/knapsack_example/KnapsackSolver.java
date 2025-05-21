@@ -10,6 +10,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
+/**
+ * Solves the knapsack problem using the ALNS solver.
+ * Implements the ISolve interface.
+ * Adds a constructor to initialize the solver with a number of iterations and a seed.
+ * Implements Destroy and Repair operators.
+ * Implements a createInitialSolution method to create an initial solution.
+ * Reports the best solution found and progress every 100 iterations.
+ */
 public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution> {
     private final Random random;
     private final int maxIterations;
