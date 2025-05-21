@@ -53,9 +53,11 @@ public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution>
                     }
                     if (currentIteration == maxIterations) {
                         // Print the results
+                        System.out.println("--------------------------------");
                         System.out.println("Best solution found:");
                         System.out.println("Total value: " + solution.getObjective());
                         System.out.println("Total weight: " + solution.getTotalWeight());
+                        System.out.println("--------------------------------");
                         System.out.println("Selected items:");
 
                         for (int i = 0; i < solution.getProblem().getItems().size(); i++) {
@@ -95,7 +97,9 @@ public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution>
             }
         }
 
+        System.out.println("Initial solution:");
         System.out.println("Total Value: " + solution.getObjective() + " Total Weight: " + solution.getTotalWeight());
+        System.out.println("--------------------------------");
         return solution;
     }
 
