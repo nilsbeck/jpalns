@@ -5,7 +5,7 @@ JPalns is a Java port of the C# version which can be found here: https://github.
 You can run the example knapsack model like this:
 
 ```
-mvn clean package && java -cp "target/jpalns-1.0-SNAPSHOT.jar:target/dependency/*" de.nilsbeck.jpalns.knapsack_example.KnapsackExample
+mvn clean compile && mvn exec:java -Dexec.mainClass="de.nilsbeck.knapsack_example.KnapsackExample"
 ```
 
 More information from the orinal implementation is here:
