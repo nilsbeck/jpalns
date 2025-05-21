@@ -1,10 +1,10 @@
 package de.nilsbeck.jpalns;
 
-/// <summary>
-/// A basic solver interface
-/// </summary>
-/// <typeparam name="TInput">The type of the problem input</typeparam>
-/// <typeparam name="TOutput">The type of the solution output</typeparam>
+/**
+ * A basic solver interface
+ * @param <TInput> The type of the problem input
+ * @param <TOutput> The type of the solution output
+ */
 public interface ISolve<TInput, TOutput extends  ISolution<TOutput>>
     {
         TOutput Solve(TInput input);

@@ -4,6 +4,13 @@ public enum Sense {
     MAXIMIZE,
     MINIMIZE;
 
+    /**
+     * Returns true if the new value is better than the current value.
+     * @param newValue the new value
+     * @param currentValue the current value
+     * @param precision the precision of the comparison
+     * @return true if the new value is better than the current value
+     */
     public boolean isBetter(double newValue, double currentValue, double precision) {
         switch (this) {
             case MAXIMIZE:
@@ -15,6 +22,13 @@ public enum Sense {
         }
     }
 
+    /**
+     * Returns the acceptance probability of the new value.
+     * @param newValue the new value
+     * @param currentValue the current value
+     * @param temperature the temperature of the system
+     * @return the acceptance probability of the new value
+     */
     public double getAcceptanceProbability(double newValue, double currentValue, double temperature) {
         switch (this) {
             case MAXIMIZE:
