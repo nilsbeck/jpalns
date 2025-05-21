@@ -1,8 +1,5 @@
 package de.nilsbeck.knapsack_example;
 
-import de.nilsbeck.jpalns.ISolve;
-import de.nilsbeck.jpalns.Sense;
-import de.nilsbeck.jpalns.ParallelAlns;
 import java.util.Arrays;
 import java.util.List;
 
