@@ -202,7 +202,9 @@ class ParallelAlnsTest {
             try {
                 java.lang.reflect.Field weightsField = ParallelAlns.class.getDeclaredField("_weights");
                 weightsField.setAccessible(true);
-                weightsAfterFirstUpdate = new ArrayList<>((List<Double>) weightsField.get(alns));
+                @SuppressWarnings("unchecked")
+                List<Double> weights = (List<Double>) weightsField.get(alns);
+                weightsAfterFirstUpdate = new ArrayList<>(weights);
             } catch (Exception e) {
                 fail("Failed to access weights field: " + e.getMessage());
                 return;
