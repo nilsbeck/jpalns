@@ -1,7 +1,5 @@
 package de.nilsbeck.jpalns;
 
-import com.ibm.asyncutil.locks.AsyncLock;
-
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,13 +10,12 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import static com.ea.async.Async.await;
-
+import java.util.concurrent.locks.ReentrantLock;
 
 public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implements ISolve<TInput, TSolution>
 {
     private final int _numberOfThreads;
+    private final Sense _optimizationType;
     private Function<TSolution, Boolean> _abort;
     private double _alpha; //>0 and < 1
     private Function<TInput, TSolution> _constructionHeuristic;
@@ -42,9 +39,9 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
     private Random _randomizer;
     private List<Function<TSolution, CompletableFuture<TSolution>>> _repairOperators;
     private double _temperature; // >0
-    private AsyncLock lock1 = AsyncLock.create();
-    private AsyncLock lock2 = AsyncLock.create();
-    private AsyncLock lock3 = AsyncLock.create();
+    private final ReentrantLock lock1 = new ReentrantLock();
+    private final ReentrantLock lock2 = new ReentrantLock();
+    private final ReentrantLock lock3 = new ReentrantLock();
 
     private List<Double> _cumulativeWeights;
     private TSolution _x;
@@ -53,7 +50,7 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
                         ArrayList<Function<TSolution, CompletableFuture<TSolution>>> destroyOperators,
                         ArrayList<Function<TSolution, CompletableFuture<TSolution>>> repairOperators, double temperature, double alpha, Random randomizer,
     double newGlobalBestWeight, double betterSolutionWeight, double acceptedSolution, double rejectedSolution,
-    double decay, Double initialWeight, Double precision, int numberOfThreads, Function<TSolution, Boolean> abort, Consumer<TSolution> progressUpdate)
+    double decay, Double initialWeight, Double precision, int numberOfThreads, Sense optimizationType, Function<TSolution, Boolean> abort, Consumer<TSolution> progressUpdate)
     {
         _destroyOperators = destroyOperators;
         _repairOperators = repairOperators;
@@ -69,6 +66,7 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
         _precision = precision != null ? precision : 1e-5;
         _abort = abort;
         _numberOfThreads = numberOfThreads;
+        _optimizationType = optimizationType;
         _progressUpdate = progressUpdate;
         _constructionHeuristic = constructionHeuristic;
         _weights = _destroyOperators.stream().flatMap(destroy -> _repairOperators.stream().map(repair -> _initialWeight)).collect(Collectors.toCollection(ArrayList::new));
@@ -90,7 +88,7 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
                 _weights.stream().mapToDouble(d -> d).toArray(),
                 idx -> MessageFormat.format("{0}, {1}",
                     _destroyOperators.get(idx / _repairOperators.size()).toString(), _repairOperators.get(idx % _repairOperators.size()).getClass().getName()));
-        }
+    }
 
     /// <summary>
     /// Gets a text describing the repair operations' weight:
@@ -157,44 +155,85 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
         BestSolution = _x;
 
         Runnable runnable = () -> {
-            double temperature = _temperature;
+            final double[] temperature = {_temperature};
             do {
-                //System.out.println("Apply Application runs on: " + Thread.currentThread().getName());
-                Function<TSolution, CompletableFuture<TSolution>> d;
-                Function<TSolution, CompletableFuture<TSolution>> r;
-                int operatorIndex;
-                var locked1 = await(lock1.acquireLock());
-                operatorIndex = SelectOperatorIndex(_cumulativeWeights);
-                d = _destroyOperators.get(operatorIndex / _repairOperators.size());
-                r = _repairOperators.get(operatorIndex % _repairOperators.size());
-                locked1.releaseLock();
+                final CompletableFuture<Function<TSolution, CompletableFuture<TSolution>>>[] dFuture = new CompletableFuture[1];
+                final CompletableFuture<Function<TSolution, CompletableFuture<TSolution>>>[] rFuture = new CompletableFuture[1];
+                final int[] operatorIndex = new int[1];
+                
+                // Select operator
+                CompletableFuture<Void> selectOp = new CompletableFuture<>();
+                lock1.lock();
+                try {
+                    operatorIndex[0] = SelectOperatorIndex(_cumulativeWeights);
+                    dFuture[0] = CompletableFuture.completedFuture(_destroyOperators.get(operatorIndex[0] / _repairOperators.size()));
+                    rFuture[0] = CompletableFuture.completedFuture(_repairOperators.get(operatorIndex[0] % _repairOperators.size()));
+                    selectOp.complete(null);
+                } finally {
+                    lock1.unlock();
+                }
 
-                TSolution xTemp;
-                var locked2 = await(lock2.acquireLock());
-                xTemp = _x.Clone();
-                locked2.releaseLock();
-                xTemp = await(r.apply(await(d.apply(xTemp))));
+                // Clone current solution
+                CompletableFuture<TSolution> xTempFuture = new CompletableFuture<>();
+                lock2.lock();
+                try {
+                    xTempFuture.complete(_x.Clone());
+                } finally {
+                    lock2.unlock();
+                }
 
-                WeightSelection weightSelection;
-                var locked3 = await(lock2.acquireLock());
-                weightSelection = UpdateCurrentSolution(xTemp, temperature);
-                locked3.releaseLock();
+                // Apply destroy and repair
+                CompletableFuture<TSolution> newSolutionFuture = CompletableFuture.allOf(selectOp, xTempFuture)
+                    .thenApply(v -> xTempFuture.join())
+                    .thenCompose(xTemp -> dFuture[0].thenCompose(d -> d.apply(xTemp)))
+                    .thenCompose(xTemp -> rFuture[0].thenCompose(r -> r.apply(xTemp)));
 
-                var locked4 = await(lock3.acquireLock());
-                weightSelection = UpdateBestSolution(xTemp, weightSelection);
-                locked4.releaseLock();
+                // Update current solution
+                CompletableFuture<WeightSelection> weightSelectionFuture = new CompletableFuture<>();
+                lock2.lock();
+                try {
+                    TSolution xTemp = newSolutionFuture.join();
+                    WeightSelection ws = UpdateCurrentSolution(xTemp, temperature[0]);
+                    if (ws.ordinal() >= WeightSelection.Accepted.ordinal()) {
+                        _x = xTemp;
+                    }
+                    weightSelectionFuture.complete(ws);
+                } finally {
+                    lock2.unlock();
+                }
 
-                var locked5 = await(lock1.acquireLock());
-                UpdateWeights(operatorIndex, weightSelection);
-                locked5.releaseLock();
+                // Update best solution
+                CompletableFuture<WeightSelection> finalWeightSelectionFuture = new CompletableFuture<>();
+                lock3.lock();
+                try {
+                    TSolution xTemp = newSolutionFuture.join();
+                    WeightSelection ws = weightSelectionFuture.join();
+                    finalWeightSelectionFuture.complete(UpdateBestSolution(xTemp, ws));
+                } finally {
+                    lock3.unlock();
+                }
 
-                temperature *= _alpha;
+                // Update weights
+                CompletableFuture<Void> updateWeightsFuture = new CompletableFuture<>();
+                lock1.lock();
+                try {
+                    WeightSelection ws = finalWeightSelectionFuture.join();
+                    UpdateWeights(operatorIndex[0], ws);
+                    updateWeightsFuture.complete(null);
+                } finally {
+                    lock1.unlock();
+                }
+
+                // Wait for all operations to complete
+                CompletableFuture.allOf(updateWeightsFuture).join();
+
+                temperature[0] *= _alpha;
 
                 if (_progressUpdate != null) _progressUpdate.accept(BestSolution);
             } while (!_abort.apply(BestSolution));
         };
 
-        for (int i = 0; i< _numberOfThreads ; i++){
+        for (int i = 0; i < _numberOfThreads; i++) {
             new Thread(runnable).start();
         }
 
@@ -203,7 +242,7 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
 
     private WeightSelection UpdateBestSolution(TSolution xTemp, WeightSelection weightSelection)
     {
-        if (BestSolution.getObjective() - xTemp.getObjective() > _precision)
+        if (_optimizationType.isBetter(xTemp.getObjective(), BestSolution.getObjective(), _precision))
         {
             BestSolution = xTemp;
             weightSelection = WeightSelection.NewGlobalBest;
@@ -257,12 +296,11 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
 
     private WeightSelection Accept(TSolution newSolution, double temperature)
     {
-        if (_x.getObjective() - newSolution.getObjective() > _precision) {
+        if (_optimizationType.isBetter(newSolution.getObjective(), _x.getObjective(), _precision)) {
             return WeightSelection.BetterThanCurrent;
         }
-        double probability = Math.exp(-(newSolution.getObjective() - _x.getObjective()) / temperature);
-        boolean accepted;
-        accepted = _randomizer.nextDouble() <= probability;
+        double probability = _optimizationType.getAcceptanceProbability(newSolution.getObjective(), _x.getObjective(), temperature);
+        boolean accepted = _randomizer.nextDouble() <= probability;
         return accepted ? WeightSelection.Accepted : WeightSelection.Rejected;
     }
 }

@@ -10,12 +10,4 @@ For algorithm details see: http://orbit.dtu.dk/fedora/objects/orbit:56703/datast
 This implementation will deviate from the paper whenever we find improvements (such as combined weights for tuples of destroy and repair)...
 
 # License
-jPALNS is distributed under MIT license and includes two libraries:
-
-1. EA Async which allows the usage of an "await" function for Completable Futures. For license details see "EA License".
-
-For library details see: https://github.com/electronicarts/ea-async
-
-2. async-util which allows easy use of async locks in Java. For license details see "Apache 2.0".
-
-For library details see: https://github.com/IBM/java-async-util
+jPALNS is distributed under MIT license
