@@ -1,7 +1,7 @@
 package de.nilsbeck.jpalns.knapsack_example;
 
 import de.nilsbeck.jpalns.ISolve;
-import de.nilsbeck.jpalns.OptimizationType;
+import de.nilsbeck.jpalns.Sense;
 import de.nilsbeck.jpalns.ParallelAlns;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,7 +42,7 @@ public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution>
                 1.0, // initialWeight
                 1e-5, // precision
                 4, // numberOfThreads
-                OptimizationType.MAXIMIZE,
+                Sense.MAXIMIZE,
                 solution -> iteration.get() >= maxIterations, // Simple iteration check
                 solution -> {
                     int currentIteration = iteration.incrementAndGet();
