@@ -1,4 +1,4 @@
-package de.nilsbeck.jpalns.knapsack_example;
+package de.nilsbeck.knapsack_example;
 
 import java.util.List;
 
