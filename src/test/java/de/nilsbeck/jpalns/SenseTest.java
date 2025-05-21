@@ -78,3 +78,4 @@ class SenseTest {
         assertTrue(Sense.MINIMIZE.getAcceptanceProbability(Double.MIN_VALUE, Double.MIN_VALUE*2, TEMPERATURE) > 0);
     }
 } 
+ 
