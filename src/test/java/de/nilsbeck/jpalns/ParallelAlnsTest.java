@@ -31,11 +31,11 @@ class ParallelAlnsTest {
         ArrayList<Function<KnapsackSolution, CompletableFuture<KnapsackSolution>>> destroyOperators = new ArrayList<>();
         ArrayList<Function<KnapsackSolution, CompletableFuture<KnapsackSolution>>> repairOperators = new ArrayList<>();
         
-        // Add two destroy operators
+        // Add two destroy operators (not actually destroying anything)
         destroyOperators.add(solution -> CompletableFuture.completedFuture(solution));
         destroyOperators.add(solution -> CompletableFuture.completedFuture(solution));
         
-        // Add two repair operators
+        // Add two repair operators (not actually repairing anything)
         repairOperators.add(solution -> CompletableFuture.completedFuture(solution));
         repairOperators.add(solution -> CompletableFuture.completedFuture(solution));
 
