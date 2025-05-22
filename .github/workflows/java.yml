@@ -25,6 +25,14 @@ jobs:
     
     - name: Run tests
       run: mvn -B test --file pom.xml
+        
+    - name: Run KnapsackExample and capture output
+      run: |
+        mvn exec:java -Dexec.mainClass="de.nilsbeck.knapsack_example.KnapsackExample" | tee knapsack_output.txt
+
+    - name: Check KnapsackExample output for expected result
+      run: |
+        grep "Iteration: 10, Best value: 7534.0" knapsack_output.txt 
     
     - name: Upload test results
       if: always()
@@ -32,4 +40,4 @@ jobs:
       with:
         name: test-results
         path: target/surefire-reports/
-        if-no-files-found: error 
+        if-no-files-found: error
