@@ -23,7 +23,7 @@ public class KnapsackExample {
         // Create and configure the solver
         KnapsackSolver solver = new KnapsackSolver(
             10,    // number of iterations
-            42       // random seed
+            System.nanoTime()       // random seed
         );
         
         // Solve the problem
