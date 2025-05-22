@@ -105,11 +105,14 @@ public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution>
             items.add(new ItemWithIndex(i, item));
         }
 
+        // TODO: Uncomment this to use a better initial solution
+        // But for this example we turn it off to see the effect from the ALNS and not
+        // find the optimal solution in the initial solution.
         // Sort items by value/weight ratio for better initial solution
-        items.sort((a, b) -> Double.compare(
-            (double) b.item.getValue() / b.item.getWeight(),
-            (double) a.item.getValue() / a.item.getWeight()
-        ));
+        // items.sort((a, b) -> Double.compare(
+        //     (double) b.item.getValue() / b.item.getWeight(),
+        //     (double) a.item.getValue() / a.item.getWeight()
+        // ));
 
         // Add items greedily
         for (ItemWithIndex item : items) {
