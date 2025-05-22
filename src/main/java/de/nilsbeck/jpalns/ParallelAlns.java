@@ -12,6 +12,12 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * Parallel ALNS solver.
+ * 
+ * @param <TInput> The type of the problem input
+ * @param <TSolution> The type of the solution
+ */
 public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implements ISolve<TInput, TSolution>
 {
     private final int _numberOfThreads;
@@ -31,9 +37,9 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
         _precision,
         _initialWeight;
 
-    /// <summary>
-    /// Called after every iteration with the current best solution as input.
-    /// </summary>
+    /**
+     * Called after every iteration with the current best solution as input.
+     */
     private Consumer<TSolution> _progressUpdate;
 
     private Random _randomizer;
@@ -74,14 +80,15 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
         _cumulativeWeights = Helper.toCumulativeEnumerable(_weights);
     }
 
-    /// <summary>
-    /// Holds the current best solution
-    /// </summary>
+    /**
+     * Holds the current best solution
+     */
     private TSolution BestSolution;
 
-    /// <summary>
-    /// Gets a text describing the methods' weights.
-    /// </summary>
+    /**
+     * Gets a text describing the methods' weights.
+     * @return A text describing the methods' weights.
+     */
     public String getMethodWeightLog() {
         return WeightLog(
                 "Operators' weights",
@@ -90,10 +97,10 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
                     _destroyOperators.get(idx / _repairOperators.size()).toString(), _repairOperators.get(idx % _repairOperators.size()).getClass().getName()));
     }
 
-    /// <summary>
-    /// Gets a text describing the repair operations' weight:
-    /// The weight of one repair operation is the average of the weights of all operations where the repair is used.
-    /// </summary>
+    /**
+     * Gets a text describing the repair operations' weight:
+     * The weight of one repair operation is the average of the weights of all operations where the repair is used.
+     */
     public String getRepairWeightLog() {
         /* Create an array of doubles describing the weight of each repair operation */
         double[] repairWeights = new double[_repairOperators.size()];
@@ -109,10 +116,10 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
     }
 
 
-    /// <summary>
-    /// Gets a text describing the destroy operations' weight:
-    /// The weight of one destroy operation is the average of the weights of all operations where the destroy is used.
-    /// </summary>
+    /**
+     * Gets a text describing the destroy operations' weight:
+     * The weight of one destroy operation is the average of the weights of all operations where the destroy is used.
+     */
     public String getDestroyWeightLog() {
         /* Create an array of doubles describing the weight of each destroy operation */
         double[] destroyWeights = new double[_destroyOperators.size()];
@@ -127,13 +134,13 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
         return WeightLog("Total destroy weights", destroyWeights, idx -> _destroyOperators.get(idx).getClass().getName());
     }
 
-    /// <summary>
-    /// Returns a nicely formatted overview over weights for operations, including both total and relative weights.
-    /// </summary>
-    /// <param name="title">The overview's title.</param>
-    /// <param name="weights">Weights to use.</param>
-    /// <param name="operationNameFromIdx">Given a (weight) index, returns the correct operation.</param>
-    /// <returns>A string describing the distribution of weight between operations.</returns>
+    /**
+     * Returns a nicely formatted overview over weights for operations, including both total and relative weights.
+     * @param title The overview's title.
+     * @param weights Weights to use.
+     * @param operationNameFromIdx Given a (weight) index, returns the correct operation.
+     * @return A string describing the distribution of weight between operations.
+     */
     private String WeightLog(String title, double[] weights, Function<Integer, String> operationNameFromIdx)
     {
         StringBuilder log = new StringBuilder(String.format("%s\nWeight Probability Operation\n\n", title));
@@ -145,11 +152,11 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
         return log.toString();
     }
 
-    /// <summary>
-    /// Solves the given input and produces a solution
-    /// </summary>
-    /// <param name="input">The problem to solve</param>
-    /// <returns>A solution to the input</returns>
+    /**
+     * Solves the given input and produces a solution
+     * @param input The problem to solve
+     * @return A solution to the input
+     */
     public TSolution Solve(TInput input) {
         _x = _constructionHeuristic.apply(input);
         BestSolution = _x;
