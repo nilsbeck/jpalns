@@ -13,15 +13,17 @@ import java.util.function.Function;
 /**
  * Solves the knapsack problem using the ALNS solver.
  * Implements the ISolve interface.
- * Adds a constructor to initialize the solver with a number of iterations and a seed.
+ * Adds a constructor to initialize the solver with a number of iterations and a
+ * seed.
  * Implements Destroy and Repair operators.
  * Implements a createInitialSolution method to create an initial solution.
- * Reports the best solution found and progress every 100 iterations.
+ * Reports the best solution found and progress every 1 iterations.
  */
 public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution> {
     private final Random random;
     private final int maxIterations;
     private final AtomicInteger iteration = new AtomicInteger(0);
+    private static final int REPORT_INTERVAL = 1; // Report every iteration
 
     public KnapsackSolver(int numIterations, long seed) {
         this.random = new Random(seed);
@@ -40,7 +42,7 @@ public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution>
                 new ArrayList<>(destroyOperators),
                 new ArrayList<>(repairOperators),
                 1000.0, // temperature - increased to allow more exploration
-                0.99, // alpha - increased to cool down more slowly
+                0.95, // alpha - increased to cool down more slowly
                 random,
                 1.0, // newGlobalBestWeight
                 0.5, // betterSolutionWeight
@@ -51,29 +53,39 @@ public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution>
                 1e-5, // precision
                 4, // numberOfThreads
                 Sense.MAXIMIZE,
-                solution -> iteration.get() >= maxIterations, // Simple iteration check
                 solution -> {
-                    int currentIteration = iteration.incrementAndGet();
-                    if (currentIteration % 100 == 0) {
-                        System.out
-                                .println("Iteration: " + currentIteration + ", Best value: " + solution.getObjective() +
-                                        ", Current value: " + solution.getTotalWeight());
+                    // Check if we've reached max iterations before incrementing
+                    int current = iteration.get();
+                    return current >= maxIterations;
+                },
+                bestSolution -> {
+                    // Only increment if we haven't reached max iterations
+                    int current = iteration.get();
+                    if (current >= maxIterations) {
+                        return;
                     }
-                    if (currentIteration == maxIterations) {
-                        // Print the results
-                        System.out.println("--------------------------------");
-                        System.out.println("Best solution found:");
-                        System.out.println("Total value: " + solution.getObjective());
-                        System.out.println("Total weight: " + solution.getTotalWeight());
-                        System.out.println("--------------------------------");
-                        System.out.println("Selected items:");
-
-                        for (int i = 0; i < solution.getProblem().getItems().size(); i++) {
-                            if (solution.isItemSelected(i)) {
-                                KnapsackProblem.Item item = solution.getProblem().getItems().get(i);
-                                System.out.printf("Item %d: weight=%d, value=%d%n",
-                                        i, item.getWeight(), item.getValue());
+                    int currentIteration = iteration.incrementAndGet();
+                    // Only report if we haven't exceeded max iterations
+                    if (currentIteration <= maxIterations) {
+                        if (currentIteration % REPORT_INTERVAL == 0) {
+                            System.out.println("Iteration: " + currentIteration + 
+                                ", Best value: " + bestSolution.getObjective());
+                        }
+                        if (currentIteration == maxIterations) {
+                            // Print the results
+                            System.out.println("--------------------------------");
+                            System.out.println("Selected items:");
+                            for (int i = 0; i < bestSolution.getProblem().getItems().size(); i++) {
+                                if (bestSolution.isItemSelected(i)) {
+                                    KnapsackProblem.Item item = bestSolution.getProblem().getItems().get(i);
+                                    System.out.printf("Item %d: weight=%d, value=%d%n",
+                                            i, item.getWeight(), item.getValue());
+                                }
                             }
+                            System.out.println("--------------------------------");
+                            System.out.println("Best solution found:");
+                            System.out.println("Total value: " + bestSolution.getObjective());
+                            System.out.println("Total weight: " + bestSolution.getTotalWeight());
                         }
                     }
                 });
@@ -92,6 +104,9 @@ public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution>
             items.add(new ItemWithIndex(i, item));
         }
 
+        // For large problems, this can be useful. For some problems it may 
+        // directly lead to the optimal solution. But that does not leave anything to
+        // the ALNS algorithm. So we deactivate it for now.
         // Sort items by value/weight ratio
         // items.sort((a, b) -> Double.compare(
         // (double) b.item.getValue() / b.item.getWeight(),
