@@ -41,17 +41,17 @@ public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution>
                 this::createInitialSolution,
                 new ArrayList<>(destroyOperators),
                 new ArrayList<>(repairOperators),
-                1000.0, // temperature - increased to allow more exploration
-                0.95, // alpha - increased to cool down more slowly
+                2000.0, // temperature - increased to allow more exploration
+                0.99,   // alpha - increased to cool down more slowly
                 random,
-                1.0, // newGlobalBestWeight
-                0.5, // betterSolutionWeight
-                0.1, // acceptedSolution
-                0.0, // rejectedSolution
-                0.95, // decay - increased to maintain operator weights longer
-                1.0, // initialWeight
-                1e-5, // precision
-                4, // numberOfThreads
+                2.0,    // newGlobalBestWeight - increased to favor operators that find better solutions
+                1.0,    // betterSolutionWeight - increased to favor operators that improve solutions
+                0.5,    // acceptedSolution - increased to accept more solutions
+                0.1,    // rejectedSolution - increased to give rejected operators more chances
+                0.99,   // decay - increased to maintain operator weights longer
+                1.0,    // initialWeight
+                1e-5,   // precision
+                4,      // numberOfThreads
                 Sense.MAXIMIZE,
                 solution -> {
                     // Check if we've reached max iterations before incrementing
@@ -94,7 +94,8 @@ public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution>
         return alns.Solve(input);
     }
 
-    private KnapsackSolution createInitialSolution(KnapsackProblem problem) {
+    // Make createInitialSolution public for testing
+    public KnapsackSolution createInitialSolution(KnapsackProblem problem) {
         KnapsackSolution solution = new KnapsackSolution(problem);
         List<ItemWithIndex> items = new ArrayList<>();
 
@@ -104,14 +105,11 @@ public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution>
             items.add(new ItemWithIndex(i, item));
         }
 
-        // For large problems, this can be useful. For some problems it may 
-        // directly lead to the optimal solution. But that does not leave anything to
-        // the ALNS algorithm. So we deactivate it for now.
-        // Sort items by value/weight ratio
-        // items.sort((a, b) -> Double.compare(
-        // (double) b.item.getValue() / b.item.getWeight(),
-        // (double) a.item.getValue() / a.item.getWeight()
-        // ));
+        // Sort items by value/weight ratio for better initial solution
+        items.sort((a, b) -> Double.compare(
+            (double) b.item.getValue() / b.item.getWeight(),
+            (double) a.item.getValue() / a.item.getWeight()
+        ));
 
         // Add items greedily
         for (ItemWithIndex item : items) {
@@ -130,12 +128,12 @@ public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution>
         List<Function<KnapsackSolution, CompletableFuture<KnapsackSolution>>> operators = new ArrayList<>();
         operators.add(solution -> {
             RandomDestroyOperator destroyer = new RandomDestroyOperator(random);
-            destroyer.destroy(solution, 0.2);
+            destroyer.destroy(solution, 0.5); // Increased to 50% to allow more exploration
             return CompletableFuture.completedFuture(solution);
         });
         operators.add(solution -> {
             WorstValueDestroyOperator destroyer = new WorstValueDestroyOperator();
-            destroyer.destroy(solution, 0.2);
+            destroyer.destroy(solution, 0.5); // Increased to 50% to allow more exploration
             return CompletableFuture.completedFuture(solution);
         });
         return operators;
@@ -166,12 +164,12 @@ public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution>
         }
     }
 
-    // Destroy operators
-    private interface DestroyOperator {
+    // Make destroy operators public for testing
+    public interface DestroyOperator {
         void destroy(KnapsackSolution solution, double percentage);
     }
 
-    private class RandomDestroyOperator implements DestroyOperator {
+    public class RandomDestroyOperator implements DestroyOperator {
         private final Random random;
 
         RandomDestroyOperator(Random random) {
@@ -192,7 +190,7 @@ public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution>
         }
     }
 
-    private class WorstValueDestroyOperator implements DestroyOperator {
+    public class WorstValueDestroyOperator implements DestroyOperator {
         @Override
         public void destroy(KnapsackSolution solution, double percentage) {
             List<ItemWithIndex> selectedItems = new ArrayList<>();
@@ -218,12 +216,12 @@ public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution>
         }
     }
 
-    // Repair operators
-    private interface RepairOperator {
+    // Make repair operators public for testing
+    public interface RepairOperator {
         void repair(KnapsackSolution solution);
     }
 
-    private class GreedyRepairOperator implements RepairOperator {
+    public class GreedyRepairOperator implements RepairOperator {
         @Override
         public void repair(KnapsackSolution solution) {
             List<ItemWithIndex> unselectedItems = new ArrayList<>();
@@ -250,7 +248,7 @@ public class KnapsackSolver implements ISolve<KnapsackProblem, KnapsackSolution>
         }
     }
 
-    private class RandomRepairOperator implements RepairOperator {
+    public class RandomRepairOperator implements RepairOperator {
         private final Random random;
 
         RandomRepairOperator(Random random) {
