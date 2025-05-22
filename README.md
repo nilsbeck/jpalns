@@ -25,7 +25,7 @@ You can also run the tests with:
 mvn test
 ```
 
-For algorithm details see: http://orbit.dtu.dk/fedora/objects/orbit:56703/datastreams/file_4129408/content
+For algorithm details see: https://www.researchgate.net/publication/220413334_An_Adaptive_Large_Neighborhood_Search_Heuristic_for_the_Pickup_and_Delivery_Problem_with_Time_Windows
 
 This implementation will deviate from the paper whenever we find improvements (such as combined weights for tuples of destroy and repair)...
 
