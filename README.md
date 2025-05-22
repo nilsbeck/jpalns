@@ -8,8 +8,17 @@ You can run the example knapsack model like this:
 mvn clean compile && mvn exec:java -Dexec.mainClass="de.nilsbeck.knapsack_example.KnapsackExample"
 ```
 
-More information from the orinal implementation is here:
-Documentation: http://larsbeck.github.io/PALNS/documentation/api/Palns.html
+You can generate the JavaDocs using:
+```
+mvn javadoc:javadoc
+```
+
+Or generate both JAR and JavaDoc using:
+```
+mvn package
+```
+
+After running either command, open target/site/apidocs/index.html in a web browser.
 
 For algorithm details see: http://orbit.dtu.dk/fedora/objects/orbit:56703/datastreams/file_4129408/content
 
