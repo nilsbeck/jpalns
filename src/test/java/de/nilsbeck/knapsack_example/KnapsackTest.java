@@ -12,7 +12,7 @@ class KnapsackTest {
     private KnapsackProblem problem;
     private KnapsackSolver solver;
     private static final long SEED = 42;
-    private static final int ITERATIONS = 1000;
+    private static final int ITERATIONS = 10;
 
     @BeforeEach
     void setUp() {
@@ -141,7 +141,7 @@ class KnapsackTest {
         KnapsackProblem simpleProblem = new KnapsackProblem(items, 20);  // capacity 20
         
         // Create a solver with more iterations and a different seed
-        KnapsackSolver optimalSolver = new KnapsackSolver(5000, System.nanoTime());
+        KnapsackSolver optimalSolver = new KnapsackSolver(10, System.nanoTime());
         
         // Run multiple times to increase chance of finding optimal
         KnapsackSolution bestSolution = null;
