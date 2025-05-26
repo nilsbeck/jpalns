@@ -4,7 +4,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Helper class for various utility methods.
+ */
 public class Helper {
+
+    /**
+     * Converts a list of doubles to a cumulative enumerable.
+     * @param input the input list of doubles
+     * @return the cumulative enumerable
+     */
     public static List<Double> toCumulativeEnumerable(List<Double> input) {
         if (input == null || input.size() < 1)
             return null;

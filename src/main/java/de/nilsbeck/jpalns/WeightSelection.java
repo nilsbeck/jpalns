@@ -1,5 +1,8 @@
 package de.nilsbeck.jpalns;
 
+/**
+ * Enum representing the different weight selection options.
+ */
 enum WeightSelection
 {
     Accepted(1),
