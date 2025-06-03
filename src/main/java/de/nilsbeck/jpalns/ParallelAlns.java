@@ -52,12 +52,79 @@ public class ParallelAlns<TInput, TSolution extends ISolution<TSolution>> implem
     private List<Double> _cumulativeWeights;
     private TSolution _x;
 
+    private void validateParameters(Function<TInput, TSolution> constructionHeuristic,
+                        ArrayList<Function<TSolution, CompletableFuture<TSolution>>> destroyOperators,
+                        ArrayList<Function<TSolution, CompletableFuture<TSolution>>> repairOperators, 
+                        double temperature, double alpha, Random randomizer,
+                        double newGlobalBestWeight, double betterSolutionWeight, 
+                        double acceptedSolution, double rejectedSolution,
+                        double decay, Double initialWeight, Double precision, 
+                        int numberOfThreads, Sense optimizationType, 
+                        Function<TSolution, Boolean> abort) {
+        // Validate required parameters
+        if (constructionHeuristic == null) {
+            throw new IllegalArgumentException("Construction heuristic cannot be null");
+        }
+        if (destroyOperators == null || destroyOperators.isEmpty()) {
+            throw new IllegalArgumentException("Destroy operators list cannot be null or empty");
+        }
+        if (repairOperators == null || repairOperators.isEmpty()) {
+            throw new IllegalArgumentException("Repair operators list cannot be null or empty");
+        }
+        if (randomizer == null) {
+            throw new IllegalArgumentException("Randomizer cannot be null");
+        }
+        if (optimizationType == null) {
+            throw new IllegalArgumentException("Optimization type cannot be null");
+        }
+        if (abort == null) {
+            throw new IllegalArgumentException("Abort function cannot be null");
+        }
+
+        // Validate numerical parameters
+        if (temperature <= 0) {
+            throw new IllegalArgumentException("Temperature must be positive");
+        }
+        if (alpha <= 0 || alpha >= 1) {
+            throw new IllegalArgumentException("Alpha must be between 0 and 1 (exclusive)");
+        }
+        if (newGlobalBestWeight < 0) {
+            throw new IllegalArgumentException("New global best weight cannot be negative");
+        }
+        if (betterSolutionWeight < 0) {
+            throw new IllegalArgumentException("Better solution weight cannot be negative");
+        }
+        if (acceptedSolution < 0) {
+            throw new IllegalArgumentException("Accepted solution weight cannot be negative");
+        }
+        if (rejectedSolution < 0) {
+            throw new IllegalArgumentException("Rejected solution weight cannot be negative");
+        }
+        if (decay <= 0 || decay >= 1) {
+            throw new IllegalArgumentException("Decay must be between 0 and 1 (exclusive)");
+        }
+        if (initialWeight != null && initialWeight <= 0) {
+            throw new IllegalArgumentException("Initial weight must be positive");
+        }
+        if (precision != null && precision <= 0) {
+            throw new IllegalArgumentException("Precision must be positive");
+        }
+        if (numberOfThreads < 1) {
+            throw new IllegalArgumentException("Number of threads must be at least 1");
+        }
+    }
+
     public ParallelAlns(Function<TInput, TSolution> constructionHeuristic,
                         ArrayList<Function<TSolution, CompletableFuture<TSolution>>> destroyOperators,
                         ArrayList<Function<TSolution, CompletableFuture<TSolution>>> repairOperators, double temperature, double alpha, Random randomizer,
     double newGlobalBestWeight, double betterSolutionWeight, double acceptedSolution, double rejectedSolution,
     double decay, Double initialWeight, Double precision, int numberOfThreads, Sense optimizationType, Function<TSolution, Boolean> abort, Consumer<TSolution> progressUpdate)
     {
+        validateParameters(constructionHeuristic, destroyOperators, repairOperators, temperature, alpha, randomizer,
+            newGlobalBestWeight, betterSolutionWeight, acceptedSolution, rejectedSolution,
+            decay, initialWeight, precision, numberOfThreads, optimizationType, abort);
+
+        // Store parameters
         _destroyOperators = destroyOperators;
         _repairOperators = repairOperators;
         _temperature = temperature;
