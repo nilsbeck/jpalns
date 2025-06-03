@@ -1,0 +1,149 @@
+{
+  "config": {
+    "run": {
+      "name": "lta21_sample"
+    }
+  },
+  "modelInput": {
+    "machines": [
+      {
+        "id": "machine0",
+        "start": "2027-02-01T00:00:00+00:00"
+      },
+      {
+        "id": "machine1",
+        "start": "2027-02-01T00:00:00+00:00"
+      },
+      {
+        "id": "machine2",
+        "start": "2027-02-01T00:00:00+00:00"
+      }
+    ],
+    "jobs": [
+      {
+        "id": "job0",
+        "requiredResources": [
+          "machine0"
+        ],
+        "duration": "PT11H34M",
+        "dependencies": []
+      },
+      {
+        "id": "job1",
+        "requiredResources": [
+          "machine1"
+        ],
+        "duration": "PT12H43M",
+        "dependencies": [
+          {
+            "id": "job0"
+          }
+        ]
+      },
+      {
+        "id": "job2",
+        "requiredResources": [
+          "machine2"
+        ],
+        "duration": "PT2H51M",
+        "dependencies": [
+          {
+            "id": "job1"
+          }
+        ]
+      },
+      {
+        "id": "job3",
+        "requiredResources": [
+          "machine0"
+        ],
+        "duration": "PT1M",
+        "dependencies": [
+          {
+            "id": "job2"
+          }
+        ]
+      },
+      {
+        "id": "job4",
+        "requiredResources": [
+          "machine1"
+        ],
+        "duration": "PT2H31M",
+        "dependencies": [
+          {
+            "id": "job3"
+          }
+        ]
+      },
+      {
+        "id": "job5",
+        "requiredResources": [
+          "machine2"
+        ],
+        "duration": "PT6H14M",
+        "dependencies": [
+          {
+            "id": "job4"
+          }
+        ]
+      },
+      {
+        "id": "job6",
+        "requiredResources": [
+          "machine0"
+        ],
+        "duration": "PT8H15M",
+        "dependencies": [
+          {
+            "id": "job5"
+          }
+        ]
+      },
+      {
+        "id": "job7",
+        "requiredResources": [
+          "machine1"
+        ],
+        "duration": "PT9H32M",
+        "dependencies": []
+      },
+      {
+        "id": "job8",
+        "requiredResources": [
+          "machine2"
+        ],
+        "duration": "PT8H48M",
+        "dependencies": [
+          {
+            "id": "job7"
+          }
+        ]
+      },
+      {
+        "id": "job9",
+        "requiredResources": [
+          "machine0"
+        ],
+        "duration": "PT8H37M",
+        "dependencies": [
+          {
+            "id": "job8"
+          }
+        ]
+      },
+      {
+        "id": "job10",
+        "requiredResources": [
+          "machine1"
+        ],
+        "duration": "PT29M",
+        "dependencies": [
+          {
+            "id": "job9"
+          }
+        ]
+      }
+    ]
+  }
+} 
