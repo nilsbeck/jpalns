@@ -3,6 +3,7 @@ package de.nilsbeck.job_scheduling_example;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -130,7 +131,7 @@ public class JobSchedulingSolver implements ISolve<ModelInput, JobSchedulingSolu
             // 4. Calculate makespan (time from start to finish of last job)
             Duration makespan = calculateMakespan(scheduledJobs);
             
-            return new JobSchedulingSolution(scheduledJobs, makespan, machineAssignments);
+            return new JobSchedulingSolution(scheduledJobs, makespan, machineAssignments, input.jobs().size());
         };
     }
 
@@ -243,24 +244,54 @@ public class JobSchedulingSolver implements ISolve<ModelInput, JobSchedulingSolu
     private ArrayList<Function<JobSchedulingSolution, CompletableFuture<JobSchedulingSolution>>> createDestroyOperators() {
         ArrayList<Function<JobSchedulingSolution, CompletableFuture<JobSchedulingSolution>>> operators = new ArrayList<>();
         
-        // TODO: Add destroy operators
-        // Examples:
-        // - Remove random jobs
-        // - Remove jobs from most loaded machine
-        // - Remove jobs that cause conflicts
+        // Add a destroy operator that removes 2-3 random jobs and their dependents
+        operators.add(solution -> CompletableFuture.supplyAsync(() -> {
+            // Create a clone of the solution to modify
+            JobSchedulingSolution newSolution = solution.Clone();
+            
+            // Select 2-3 random jobs to remove
+            int numJobsToRemove = random.nextInt(2) + 2; // Random number between 2 and 3
+            List<JobSchedulingSolution.ScheduledJob> allJobs = new ArrayList<>(newSolution.getScheduledJobs());
+            
+            if (allJobs.size() <= numJobsToRemove) {
+                // If we have fewer jobs than we want to remove, remove all
+                newSolution.clearJobs();
+                return newSolution;
+            }
+            
+            // Randomly select jobs to remove
+            Set<String> jobsToRemoveIds = new HashSet<>();
+            for (int i = 0; i < numJobsToRemove; i++) {
+                int index = random.nextInt(allJobs.size());
+                JobSchedulingSolution.ScheduledJob job = allJobs.remove(index);
+                jobsToRemoveIds.add(job.job().id());
+            }
+            
+            // Find all dependent jobs that need to be removed
+            for (JobSchedulingSolution.ScheduledJob job : new ArrayList<>(newSolution.getScheduledJobs())) {
+                if (job.job().dependencies().stream()
+                        .anyMatch(dep -> jobsToRemoveIds.contains(dep.id()))) {
+                    jobsToRemoveIds.add(job.job().id());
+                }
+            }
+            
+            // Remove all selected jobs and their dependents
+            for (JobSchedulingSolution.ScheduledJob job : new ArrayList<>(newSolution.getScheduledJobs())) {
+                if (jobsToRemoveIds.contains(job.job().id())) {
+                    newSolution.removeJob(job);
+                }
+            }
+            
+            return newSolution;
+        }));
         
         return operators;
     }
 
     private ArrayList<Function<JobSchedulingSolution, CompletableFuture<JobSchedulingSolution>>> createRepairOperators() {
         ArrayList<Function<JobSchedulingSolution, CompletableFuture<JobSchedulingSolution>>> operators = new ArrayList<>();
-        
-        // TODO: Add repair operators
-        // Examples:
-        // - Insert jobs at earliest possible time
-        // - Insert jobs to minimize machine idle time
-        // - Reschedule jobs to balance machine load
-        
+        // Add a trivial repair operator (no-op)
+        operators.add(solution -> CompletableFuture.completedFuture(solution));
         return operators;
     }
 
@@ -277,17 +308,145 @@ public class JobSchedulingSolver implements ISolve<ModelInput, JobSchedulingSolu
             if (currentIteration <= maxIterations) {
                 if (currentIteration % REPORT_INTERVAL == 0) {
                     System.out.println("Iteration: " + currentIteration + 
-                        ", Best makespan: " + (-bestSolution.getObjective()) + " minutes");
+                        ", Best makespan: " + bestSolution.getMakespan().toMinutes() + " minutes" +
+                        ", Unassigned jobs: " + bestSolution.getUnassignedJobs());
                 }
                 if (currentIteration == maxIterations) {
                     // Print final results
                     System.out.println("--------------------------------");
                     System.out.println("Best solution found:");
                     System.out.println("Makespan: " + bestSolution.getMakespan().toHours() + " hours");
-                    System.out.println("Number of scheduled jobs: " + bestSolution.getScheduledJobs().size());
+                    System.out.println("Scheduled jobs: " + bestSolution.getScheduledJobs().size() + 
+                        " of " + bestSolution.getTotalJobs());
+                    System.out.println("Unassigned jobs: " + bestSolution.getUnassignedJobs());
                     System.out.println("--------------------------------");
                 }
             }
         };
+    }
+
+    /**
+     * Validates a solution for correctness and feasibility.
+     * Checks:
+     * 1. No job overlaps on the same machine
+     * 2. Jobs are assigned to correct machines
+     * 3. Job dependencies are respected (DAG)
+     * 4. Makespan calculation is correct
+     * 
+     * @param solution The solution to validate
+     * @param input The problem input containing job and machine definitions
+     * @return A ValidationResult containing validation status and any error messages
+     */
+    public static ValidationResult validateSolution(JobSchedulingSolution solution, ModelInput input) {
+        List<String> errors = new ArrayList<>();
+        
+        // Create lookup maps for efficiency
+        Map<String, Job> jobMap = input.jobs().stream()
+            .collect(Collectors.toMap(Job::id, job -> job));
+        Map<String, Machine> machineMap = input.machines().stream()
+            .collect(Collectors.toMap(Machine::id, machine -> machine));
+            
+        // 1. Check for job overlaps and correct machine assignments
+        Map<String, List<JobSchedulingSolution.ScheduledJob>> machineAssignments = solution.getMachineAssignments();
+        for (Map.Entry<String, List<JobSchedulingSolution.ScheduledJob>> entry : machineAssignments.entrySet()) {
+            String machineId = entry.getKey();
+            // Create a mutable copy of the jobs list for sorting
+            List<JobSchedulingSolution.ScheduledJob> jobs = new ArrayList<>(entry.getValue());
+            
+            // Sort jobs by start time for efficient overlap checking
+            jobs.sort(Comparator.comparing(JobSchedulingSolution.ScheduledJob::startTime));
+            
+            // Check each job against subsequent jobs for overlaps
+            for (int i = 0; i < jobs.size(); i++) {
+                JobSchedulingSolution.ScheduledJob job1 = jobs.get(i);
+                
+                // Verify machine assignment
+                if (!job1.job().requiredResources().contains(machineId)) {
+                    errors.add(String.format("Job %s assigned to incorrect machine %s", 
+                        job1.job().id(), machineId));
+                }
+                
+                // Check for overlaps with subsequent jobs
+                for (int j = i + 1; j < jobs.size(); j++) {
+                    JobSchedulingSolution.ScheduledJob job2 = jobs.get(j);
+                    if (job1.endTime().isAfter(job2.startTime())) {
+                        errors.add(String.format("Jobs %s and %s overlap on machine %s", 
+                            job1.job().id(), job2.job().id(), machineId));
+                    }
+                }
+            }
+        }
+        
+        // 2. Check job dependencies and sequence
+        Map<String, JobSchedulingSolution.ScheduledJob> scheduledJobMap = solution.getScheduledJobs().stream()
+            .collect(Collectors.toMap(sj -> sj.job().id(), sj -> sj));
+            
+        for (JobSchedulingSolution.ScheduledJob scheduledJob : solution.getScheduledJobs()) {
+            Job job = scheduledJob.job();
+            
+            // Check each dependency
+            for (JobDependency dep : job.dependencies()) {
+                JobSchedulingSolution.ScheduledJob depJob = scheduledJobMap.get(dep.id());
+                if (depJob == null) {
+                    errors.add(String.format("Job %s depends on job %s which is not scheduled", 
+                        job.id(), dep.id()));
+                } else if (depJob.endTime().isAfter(scheduledJob.startTime())) {
+                    errors.add(String.format("Job %s starts before its dependency %s finishes", 
+                        job.id(), dep.id()));
+                }
+            }
+        }
+        
+        // 3. Verify makespan calculation
+        if (!solution.getScheduledJobs().isEmpty()) {
+            Instant earliestStart = solution.getScheduledJobs().stream()
+                .map(JobSchedulingSolution.ScheduledJob::startTime)
+                .min(Instant::compareTo)
+                .orElseThrow();
+                
+            Instant latestEnd = solution.getScheduledJobs().stream()
+                .map(JobSchedulingSolution.ScheduledJob::endTime)
+                .max(Instant::compareTo)
+                .orElseThrow();
+                
+            Duration calculatedMakespan = Duration.between(earliestStart, latestEnd);
+            if (!calculatedMakespan.equals(solution.getMakespan())) {
+                errors.add(String.format("Incorrect makespan calculation. Expected %s, got %s", 
+                    calculatedMakespan, solution.getMakespan()));
+            }
+        } else if (!solution.getMakespan().isZero()) {
+            errors.add("Empty solution should have zero makespan");
+        }
+        
+        // 4. Check if all jobs are scheduled
+        if (solution.getScheduledJobs().size() != solution.getTotalJobs()) {
+            errors.add(String.format("Not all jobs scheduled. Expected %d, got %d", 
+                solution.getTotalJobs(), solution.getScheduledJobs().size()));
+        }
+        
+        return new ValidationResult(errors.isEmpty(), errors);
+    }
+    
+    /**
+     * Result of solution validation
+     */
+    public record ValidationResult(
+        boolean isValid,
+        List<String> errors
+    ) {
+        public ValidationResult {
+            errors = List.copyOf(errors); // Make errors list immutable
+        }
+        
+        @Override
+        public String toString() {
+            if (isValid) {
+                return "Solution is valid";
+            }
+            return "Solution is invalid:\n" + 
+                errors.stream()
+                    .map(error -> "- " + error)
+                    .collect(Collectors.joining("\n"));
+        }
     }
 } 
